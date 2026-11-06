@@ -8,6 +8,10 @@ const field = name => form.elements.namedItem(name);
 const presets = [...form.querySelectorAll('[data-duration]')];
 const slider = get('student-slider');
 const dialog = get('share-dialog');
+const roomStage = get('room-stage');
+const roomCanvas = get('room-canvas');
+const roomTime = get('room-time');
+const roomStudentLimit = 40;
 const number = new Intl.NumberFormat('es-BO', { maximumFractionDigits: 1 });
 const integer = new Intl.NumberFormat('es-BO', { maximumFractionDigits: 0 });
 const stepFormat = new Intl.NumberFormat('es-BO', { maximumFractionDigits: 3 });
@@ -16,6 +20,8 @@ let active;
 let result;
 let toastTimer;
 let sharingRequest = 0;
+let roomScene;
+let updateChartCursor;
 
 function formatError(value) {
   if (value === 0) return '0';
@@ -121,8 +127,61 @@ function render() {
     (config.pause ? '<li><span class="key base"></span> Ventilación constante</li>' : '') +
     '<li><span class="key target"></span> Meta de CO₂</li>' +
     (config.pause ? '<li><span class="key pause"></span> Pausa programada</li>' : '');
+  const visibleStudents = Math.min(config.students, roomStudentLimit);
+  const students = config.students === 1 ? '1 estudiante' : `${config.students} estudiantes`;
+  const represented = visibleStudents < config.students ? ` (${visibleStudents} representados)` : '';
+  const roomTeachers = config.teachers > 1 ? `${config.teachers} docentes (1 representado)`
+    : config.teachers === 1 ? '1 docente' : '0 docentes';
+  text('room-occupancy', students + represented + ' · ' + roomTeachers);
+  roomTime.max = config.duration;
+  get('room-pause-start').hidden = !config.pause;
+  get('room-pause-end').hidden = !config.pause;
+  roomScene?.setRoom(config);
   renderCharts();
   renderTables();
+}
+
+function renderRoomMoment() {
+  const minute = roomTime.valueAsNumber;
+  const { intervals } = result.current;
+  const interval = intervals.find(part => minute < part.end) ?? intervals.at(-1);
+  const ppm = interval.valueAt(minute);
+  const inPause = active.pause && interval.start === active.pauseAt
+    && interval.end === active.pauseAt + active.pauseLength;
+  const reinforced = inPause && interval.rate > active.rate;
+  const over = ppm > active.target;
+  text('room-minute', stepFormat.format(minute) + ' min');
+  text('room-ppm', integer.format(ppm) + ' ppm');
+  text('room-target-status', (over ? 'Sobre la meta de ' : 'Dentro de la meta de ') + number.format(active.target) + ' ppm');
+  text('room-phase', reinforced ? 'Pausa · Ventilación reforzada' : inPause ? 'Ventilación en pausa' : 'Ventilación base');
+  text('room-rate', stepFormat.format(interval.rate));
+  get('room-reading').dataset.over = over;
+  get('room-ventilation').dataset.reinforced = reinforced;
+  roomStage.dataset.over = over;
+  updateChartCursor(minute, ppm);
+  roomScene?.setAir(ppm, active.target, reinforced);
+}
+
+function showRoomFallback() {
+  roomScene = null;
+  roomCanvas.hidden = true;
+  const status = get('room-render-status');
+  status.hidden = false;
+  status.textContent = 'Vista esquemática';
+}
+
+async function loadRoomScene() {
+  text('room-render-status', 'Cargando vista 3D…');
+  try {
+    const { createRoomScene } = await import('./room-3d.mjs');
+    roomScene = createRoomScene(roomStage, roomCanvas, roomStudentLimit, showRoomFallback);
+    roomScene.setRoom(active);
+    roomCanvas.hidden = false;
+    get('room-render-status').hidden = true;
+    renderRoomMoment();
+  } catch {
+    showRoomFallback();
+  }
 }
 
 function renderCharts() {
@@ -132,10 +191,11 @@ function renderCharts() {
   const exact = sample(current);
   const timeline = [{ style: 'active', points: exact }];
   if (pause) timeline.unshift({ style: 'base', points: sample(baseline) });
-  renderChart(get('timeline-chart'), {
+  updateChartCursor = renderChart(get('timeline-chart'), {
     series: timeline, duration, target, crossing, pause: band,
-    title: 'Concentración de CO₂ durante la clase y meta de referencia', height: 225,
+    title: 'Concentración de CO₂ durante la clase y meta de referencia', height: 225, cursor: true,
   });
+  renderRoomMoment();
   renderChart(get('methods-chart'), {
     series: [
       { style: 'exact', points: exact },
@@ -185,6 +245,15 @@ form.addEventListener('submit', event => {
 });
 slider.addEventListener('input', () => { field('students').value = slider.value; });
 slider.addEventListener('change', () => { if (form.reportValidity()) runForm(); });
+roomTime.addEventListener('input', renderRoomMoment);
+get('room-pause-start').addEventListener('click', () => {
+  roomTime.value = active.pauseAt;
+  renderRoomMoment();
+});
+get('room-pause-end').addEventListener('click', () => {
+  roomTime.value = active.pauseAt + active.pauseLength;
+  renderRoomMoment();
+});
 for (const button of presets) {
   button.addEventListener('click', () => {
     field('duration').value = button.dataset.duration;
@@ -238,6 +307,13 @@ get('copy-link').addEventListener('click', async () => {
 const initial = readLocal() ?? defaults;
 fill(initial);
 run(initial);
+const sceneObserver = new IntersectionObserver(entries => {
+  if (entries.some(entry => entry.isIntersecting)) {
+    sceneObserver.disconnect();
+    loadRoomScene();
+  }
+}, { rootMargin: '120px' });
+sceneObserver.observe(roomStage);
 let width = get('timeline-chart').clientWidth;
 new ResizeObserver(() => {
   const next = get('timeline-chart').clientWidth;
@@ -255,6 +331,7 @@ async function loadShared() {
     if (location.hash !== hash) return;
     if (!shared) throw new Error('Escenario inválido.');
     fill(shared);
+    roomTime.value = 0;
     run(shared);
     toast('Escenario cargado desde el enlace.');
   } catch {

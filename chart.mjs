@@ -8,7 +8,7 @@ export function sample(trace) {
   }));
 }
 
-export function renderChart(container, { series, duration, target, pause, crossing, title, height }) {
+export function renderChart(container, { series, duration, target, pause, crossing, title, height, cursor = false }) {
   const width = Math.max(240, Math.floor(container.clientWidth));
   const left = width < 400 ? 45 : 54;
   const right = width - 14;
@@ -52,5 +52,19 @@ export function renderChart(container, { series, duration, target, pause, crossi
   if (crossing != null && crossing > 0) {
     marks.push(`<circle class="cross-dot" cx="${x(crossing)}" cy="${y(target)}" r="4.4"/>`);
   }
+  if (cursor) {
+    marks.push(`<g aria-hidden="true">${line(left, top, left, bottom, 'time-cursor')}<circle class="time-dot" r="4.4"/></g>`);
+  }
   container.innerHTML = `<svg viewBox="0 0 ${width} ${height + 11}" role="img" aria-label="${title}">${marks.join('')}</svg>`;
+  if (cursor) {
+    const rule = container.querySelector('.time-cursor');
+    const dot = container.querySelector('.time-dot');
+    return (minute, value) => {
+      const position = x(minute);
+      rule.setAttribute('x1', position);
+      rule.setAttribute('x2', position);
+      dot.setAttribute('cx', position);
+      dot.setAttribute('cy', y(value));
+    };
+  }
 }

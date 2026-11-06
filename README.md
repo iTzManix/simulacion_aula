@@ -6,6 +6,10 @@ Simulador de ocupación y ventilación para una clase universitaria. El escenari
 
 Desde esta carpeta, ejecuta `python -m http.server 8000` y abre [la aplicación local](http://localhost:8000). Para publicar en GitHub Pages, coloca el contenido de esta carpeta en la raíz de un repositorio y elige esa rama y la carpeta `/` en **Settings → Pages**. La web usa HTML, CSS y JavaScript con rutas relativas. [Publicación desde una rama](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
 
+El panel Aula 3D usa la misma solución exacta que la gráfica. La cortina representa la concentración estimada para todo el recinto. Las clases nuevas incluyen un docente. La escena muestra hasta 40 estudiantes y un docente, y el cálculo incluye a todos los ocupantes del escenario. La vista esquemática conserva las lecturas y la barra de tiempo cuando WebGL 2 no está disponible.
+
+Los módulos de Three.js r187 y su licencia MIT están en `vendor/three-r187`. El sitio carga esos módulos al llegar al panel y los sirve desde GitHub Pages. [Versión r187 de Three.js](https://github.com/mrdoob/three.js/releases/tag/r187)
+
 ## Guardar en Supabase
 
 1. En el SQL Editor del proyecto **Metodos**, ejecuta `supabase.sql`.

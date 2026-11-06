@@ -37,6 +37,7 @@
       <div class="room-card">
         <div class="room-top"><span>Dimensiones del aula</span><span class="room-tag">Volumen de aire</span></div>
         <svg class="room-drawing" viewBox="0 0 300 105" fill="none" aria-hidden="true">
+          <g id="room-sketch">
           <defs><pattern id="dots" width="11" height="11" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r=".9" fill="#6f9dca" opacity=".56"/></pattern></defs>
           <path d="M8 0h284v105H8z" fill="url(#dots)"/>
           <path d="m150 20 71 28-71 29-71-29 71-28Z" fill="#2d568c" fill-opacity=".64"/>
@@ -45,6 +46,7 @@
           <path d="m79 48 71-28 71 28v23l-71 29-71-29V48Zm0 0 71 29 71-29m-71 29v23m0-80v19m-71 32 71-29 71 29" stroke="#93bedf" stroke-width="1.2"/>
           <path d="M60 55h-9m198 0h-9M60 71h-9m198 0h-9M61 55v16m178-16v16" stroke="#c8e0f7" stroke-width="1"/>
           <path d="m96 16-15 6m134 0-15-6" stroke="#78dbd2" stroke-width="1.8" stroke-linecap="round"/>
+          </g>
         </svg>
         <div class="room-bottom"><strong id="room-dimensions">10 × 10 × 3 m</strong><span id="room-volume">300 m³</span></div>
       </div>
@@ -60,7 +62,7 @@
             <legend>Ocupación</legend>
             <div class="input-grid occupancy">
               <label>Estudiantes<input name="students" type="number" step="1" required></label>
-              <label>Docentes<input name="teachers" type="number" step="1" required></label>
+              <label>Docentes<input name="teachers" type="number" step="1" value="1" readonly></label>
             </div>
             <input id="student-slider" class="range" type="range" min="0" max="60" step="1" aria-label="Número de estudiantes">
           </fieldset>
@@ -120,6 +122,43 @@
             <div class="metric"><span>Pico de CO₂</span><strong id="peak"></strong><small id="peak-note"></small></div>
             <div class="metric"><span>Primer cruce de la meta</span><strong id="crossing"></strong><small id="crossing-note"></small></div>
           </div>
+          <section class="room-explorer" aria-labelledby="room-explorer-heading">
+            <div class="room-explorer-heading">
+              <h3 id="room-explorer-heading">Aula 3D</h3>
+              <p id="room-occupancy"></p>
+            </div>
+            <div class="room-explorer-layout">
+              <div class="room-stage" id="room-stage">
+                <svg viewBox="0 0 300 105" fill="none" aria-hidden="true"><use href="#room-sketch"/></svg>
+                <canvas id="room-canvas" aria-hidden="true" hidden></canvas>
+                <span id="room-render-status" class="room-render-status">Vista esquemática</span>
+              </div>
+              <div class="room-readout">
+                <div class="room-reading" id="room-reading">
+                  <span>CO₂ en el minuto elegido</span>
+                  <strong id="room-ppm"></strong>
+                  <small id="room-target-status"></small>
+                </div>
+                <div class="room-reading" id="room-ventilation">
+                  <span id="room-phase"></span>
+                  <strong id="room-rate"></strong>
+                  <small>Renovaciones de aire por hora</small>
+                </div>
+              </div>
+            </div>
+            <p class="room-caption">La cortina de color representa la concentración estimada de CO₂ para toda el aula.</p>
+            <div class="room-time">
+              <div class="room-time-heading">
+                <label for="room-time">Minuto de la clase</label>
+                <output id="room-minute" for="room-time"></output>
+              </div>
+              <input id="room-time" class="range" type="range" min="0" max="90" step="any" value="0">
+              <div class="room-time-actions">
+                <button id="room-pause-start" class="button secondary" type="button">Inicio de pausa</button>
+                <button id="room-pause-end" class="button secondary" type="button">Fin de pausa</button>
+              </div>
+            </div>
+          </section>
           <div id="timeline-chart" class="chart"></div>
           <ul class="legend" id="timeline-legend"></ul>
           <p id="interpretation" class="notice"></p>
